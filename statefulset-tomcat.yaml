@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: tomcat-service
+  namespace: qa
+spec:
+  type: NodePort
+  selector:
+    app: tomcat
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30018
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: tomcat
+  namespace: qa
+spec:
+  selector:
+    matchLabels:
+      app: tomcat # has to match .spec.template.metadata.labels
+  serviceName: "tomcat"
+  replicas: 3 # by default is 1
+  minReadySeconds: 60 # by default is 0
+  template:
+    metadata:
+      labels:
+        app: tomcat # has to match .spec.selector.matchLabels
+    spec:
+      terminationGracePeriodSeconds: 90
+      containers:
+      - name: tomcat
+        image: tomcat
+        ports:
+        - containerPort: 80
+          name: tomcat
+        volumeMounts:
+        - mountPath: /usr/local/tomcat/webapps
+          name: tomcat
+        - mountPath: /usr/local/tomcat/conf/tomcat-users.xml
+          name: tomcatconf0
+        - mountPath: /usr/local/tomcat/conf/server.xml
+          name: tomcatconf
+        - mountPath: /usr/local/tomcat/webapps/manager/META-INF/context.xml
+          name: tomcatconf
+        - mountPath: /usr/local/tomcat/webapps/host-manager/WEB-INF/manager.xml
+          name: tomcatconf
+      volumes:
+      - name: tomcat
+        persistentVolumeClaim:
+          claimName: pvc-tomcat
+      - name: tomcatconf
+          configMap:
+            name: tomcat-cm
